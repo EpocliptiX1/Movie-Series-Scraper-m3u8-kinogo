@@ -1,0 +1,15 @@
+{
+  "name": "kinogo-standalone",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone localhost test: search kinogo, resolve the cinemar embed, play it. Separate from the main AniKino stack.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.13.4",
+    "cheerio": "^1.2.0",
+    "got-scraping": "^4.2.1"
+  }
+}

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kinogo test</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 0; padding: 16px; max-width: 900px; margin-inline: auto; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+  label { display: flex; flex-direction: column; font-size: 12px; color: #aaa; gap: 4px; }
+  input, select, button { padding: 8px 10px; background: #222; color: #eee; border: 1px solid #444; border-radius: 6px; font-size: 14px; }
+  input[type=number] { width: 80px; }
+  #title { width: 280px; }
+  button { background: #f96d00; border-color: #f96d00; color: #000; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  video { width: 100%; background: #000; margin-top: 16px; border-radius: 8px; aspect-ratio: 16/9; }
+  pre { background: #1a1a1a; padding: 10px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; }
+  .err { color: #ff6b6b; }
+</style>
+</head>
+<body>
+<h3>kinogo test</h3>
+<form id="f">
+  <label>Title (Russian or original)<input id="title" required placeholder="e.g. Холод or Inception"></label>
+  <label>Type<select id="type"><option value="movie">Movie</option><option value="series">Series</option></select></label>
+  <label class="se">Season<input id="season" type="number" min="1" value="1"></label>
+  <label class="se">Episode<input id="episode" type="number" min="1" value="1"></label>
+  <button id="go">Play</button>
+</form>
+<div id="status"></div>
+<video id="v" controls playsinline></video>
+<pre id="log"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script>
+const $ = id => document.getElementById(id);
+const syncType = () => document.querySelectorAll('.se').forEach(e => e.style.display = $('type').value === 'series' ? '' : 'none');
+$('type').onchange = syncType; syncType();
+
+let hls;
+$('f').onsubmit = async e => {
+  e.preventDefault();
+  $('go').disabled = true; $('status').className = ''; $('status').textContent = 'Resolving...'; $('log').textContent = '';
+  try {
+    const q = new URLSearchParams({ title: $('title').value, type: $('type').value, season: $('season').value, episode: $('episode').value });
+    const r = await fetch('/api/resolve?' + q).then(r => r.json());
+    $('log').textContent = (r.logs || []).join('\n');
+    if (!r.ok) throw new Error(r.error);
+    $('status').textContent = `Matched: ${r.matched} — ${r.label}`;
+    if (hls) hls.destroy();
+    const v = $('v');
+    if (window.Hls && Hls.isSupported()) {
+      hls = new Hls(); hls.loadSource(r.stream); hls.attachMedia(v);
+      hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) { $('status').className = 'err'; $('status').textContent = 'Playback error: ' + d.details; } });
+    } else { v.src = r.stream; }
+    v.play().catch(() => {});
+  } catch (err) { $('status').className = 'err'; $('status').textContent = err.message; }
+  $('go').disabled = false;
+};
+</script>
+</body>
+</html>
